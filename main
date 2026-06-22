@@ -1,0 +1,19 @@
+local map = {
+    [93978595733734] = "VD",
+    [109686116036889] = "DN",
+    [125224440903394] = "desrt",
+}
+
+local base = "https://raw.githubusercontent.com/Tiooxy/rosblox/refs/heads/main/"
+
+local scriptName = map[game.PlaceId] or "all_map"
+
+local success, result = pcall(function()
+    return game:HttpGet(base .. scriptName)
+end)
+
+if success then
+    loadstring(result)()
+else
+    warn("Gagal load script")
+end

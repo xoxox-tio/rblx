@@ -1,0 +1,462 @@
+getgenv().InstanSkillCheck_Active = true
+
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SkillCheckEvent = ReplicatedStorage.Remotes.Generator:WaitForChild("SkillCheckEvent")
+local SkillCheckResultEvent = ReplicatedStorage.Remotes.Generator:WaitForChild("SkillCheckResultEvent")
+local KingScourgeStart = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeStart")
+local KingScourgeHit = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeHit")
+local KingScourgeEnd = ReplicatedStorage.Remotes.KillerPerks.kingscourge:WaitForChild("KingScourgeEnd")
+local LocalPlayer = game.Players.LocalPlayer
+local v1 = LocalPlayer:GetAttribute("clickhold") or false
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Frame = PlayerGui:WaitForChild("ProgressPromptGui"):WaitForChild("Frame")
+local CollectionService = game:GetService("CollectionService")
+local UserInputService = game:GetService("UserInputService")
+local Check = PlayerGui:WaitForChild("SkillCheckPromptGui"):WaitForChild("Check")
+local Line = Check:WaitForChild("Line")
+local Goal = Check:WaitForChild("Goal")
+local RunService = game:GetService("RunService")
+
+
+local v3 = false
+local v4 = nil
+local v5 = nil
+local v6 = nil
+local v7 = false
+local v8 = false
+local v9 = false
+local v10 = 0
+local v11 = 0
+local v12 = nil
+local v13 = nil
+local v14 = nil
+
+local v15 = nil
+local v16 = nil
+local v17 = nil
+
+local function cleanupSkillCheck()
+    if v15 then v15:Disconnect(); v15 = nil end
+    if v16 then v16:Disconnect(); v16 = nil end
+    if not v17 then return end
+    v17:Disconnect()
+    v17 = nil
+end
+
+local function handleSkillCheck(p1)
+    if not v3 or v7 then return end
+    v7 = true
+    if v4 then
+        v4:Cancel()
+        v4 = nil
+    end
+    
+    if p1 == "neutral" then
+        v3 = false
+        Check.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+        SkillCheckResultEvent:FireServer("neutral", 0, v5, v6)
+    else
+        task.delay(0.1, function()
+            v3 = false
+            Check.Visible = false
+            Line.Rotation = 0
+            Goal.Rotation = 0
+        end)
+        
+        Frame.Visible = false
+        SkillCheckResultEvent:FireServer("success", 1, v5, v6)
+    end
+    cleanupSkillCheck()
+end
+
+local function endScourgeMode(p1)
+    if not v9 then return end
+    v9 = false
+    v3 = false
+    v7 = true
+    if p1 then
+        local char = LocalPlayer.Character
+        if char then
+            local checkInt = char:FindFirstChild("CheckInterractable")
+            if checkInt then checkInt:SetAttribute("isRepairing", false) end
+            
+            local HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+            if HumanoidRootPart then
+                CollectionService:RemoveTag(HumanoidRootPart, "doing action")
+                HumanoidRootPart.Anchored = false
+            end
+        end
+    end
+    
+    if v14 then v14:Cancel(); v14 = nil end
+    if v4 then v4:Cancel(); v4 = nil end
+    
+    Check.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    cleanupSkillCheck()
+end
+
+local function startMovementCheck()
+    if not v1 then return end
+    if not v15 then
+        v15 = RunService.Heartbeat:Connect(function()
+            if v1 and (v3 and not v7) then
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChild("Humanoid")
+                
+                if hum and hum.MoveDirection.Magnitude > 0 then
+                    if v9 then
+                        KingScourgeHit:FireServer(v13, "fail")
+                        endScourgeMode()
+                        return
+                    elseif v8 then
+                        if v3 and not v7 then
+                            v7 = true
+                            if v4 then v4:Cancel(); v4 = nil end
+                            task.delay(0.1, function()
+                                v3 = false
+                                Check.Visible = false
+                                Line.Rotation = 0
+                                Goal.Rotation = 0
+                            end)
+                            Frame.Visible = false
+                            SkillCheckResultEvent:FireServer("fail", -10, v5, v6)
+                            if char and char:FindFirstChild("CheckInterractable") then
+                                char.CheckInterractable:SetAttribute("isRepairing", false)
+                            end
+                            cleanupSkillCheck()
+                        end
+                    elseif v3 and not v7 then
+                        v7 = true
+                        if v4 then v4:Cancel(); v4 = nil end
+                        v3 = false
+                        Check.Visible = false
+                        Line.Rotation = 0
+                        Goal.Rotation = 0
+                        SkillCheckResultEvent:FireServer("neutral", 0, v5, v6)
+                        cleanupSkillCheck()
+                    end
+                end
+                if v3 or not v15 then return end
+            elseif not v15 then
+                return
+            end
+            v15:Disconnect()
+            v15 = nil
+        end)
+    end
+end
+
+local function startHpCheck()
+    if v16 then return end
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then
+        local Health = hum.Health
+        v16 = hum:GetPropertyChangedSignal("Health"):Connect(function()
+            if not v3 or v7 then return end
+            local Health_2 = hum.Health
+            if v9 then
+                if not (hum.Health < Health) then
+                    Health = hum.Health
+                    return
+                end
+                KingScourgeHit:FireServer(v13, "fail")
+                endScourgeMode()
+                Health = hum.Health
+            else
+                if Health_2 < Health and (v3 and not v7) then
+                    v7 = true
+                    if v4 then v4:Cancel(); v4 = nil end
+                    v3 = false
+                    Check.Visible = false
+                    Line.Rotation = 0
+                    Goal.Rotation = 0
+                    SkillCheckResultEvent:FireServer("neutral", 0, v5, v6)
+                    cleanupSkillCheck()
+                end
+                Health = Health_2
+            end
+        end)
+    end
+end
+
+local function startActionTagCheck()
+    if v17 then return end
+    local Character = LocalPlayer.Character
+    if not Character then return end
+    
+    if not Character:GetAttribute("Locked") then
+        v17 = Character:GetAttributeChangedSignal("Locked"):Connect(function()
+            if not Character:GetAttribute("Locked") then return end
+            if not v3 or v7 then return end
+            
+            if v9 then
+                KingScourgeHit:FireServer(v13, "fail")
+                endScourgeMode(true)
+                return
+            end
+            
+            if not v3 or v7 then return end
+            v7 = true
+            if v4 then v4:Cancel(); v4 = nil end
+            
+            task.delay(0.1, function()
+                v3 = false
+                Check.Visible = false
+                Line.Rotation = 0
+                Goal.Rotation = 0
+            end)
+            Frame.Visible = false
+            SkillCheckResultEvent:FireServer("fail", -10, v5, v6)
+            
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("CheckInterractable") then
+                char.CheckInterractable:SetAttribute("isRepairing", false)
+            end
+            cleanupSkillCheck()
+        end)
+        return
+    end
+    
+    if not v3 or v7 then return end
+    if v9 then
+        KingScourgeHit:FireServer(v13, "fail")
+        endScourgeMode(true)
+        return
+    end
+    
+    if not v3 or v7 then return end
+    v7 = true
+    if v4 then v4:Cancel(); v4 = nil end
+    
+    task.delay(0.1, function()
+        v3 = false
+        Check.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+    end)
+    Frame.Visible = false
+    SkillCheckResultEvent:FireServer("fail", -10, v5, v6)
+    
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("CheckInterractable") then
+        char.CheckInterractable:SetAttribute("isRepairing", false)
+    end
+    cleanupSkillCheck()
+end
+
+local function tweenLineRotation()
+    v7 = false
+    local charAttr = if LocalPlayer.Character then LocalPlayer.Character:GetAttribute("skillcheckspeed") or 1 else 1
+    v4 = TweenService:Create(Line, TweenInfo.new(math.max(1.3 * charAttr, 0.4), Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {
+        Rotation = 360
+    })
+    
+    v4.Completed:Connect(function()
+        if not v3 or v7 then return end
+        
+        SkillCheckResultEvent:FireServer("success", 1, v5, v6)
+        
+        v3 = false
+        Check.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+        cleanupSkillCheck()
+    end)
+    v4:Play()
+end
+
+local function startScourgeSpin()
+    if not v9 then return end
+    local sc = v11 - v10 + 1
+    local speedMulti = (if sc == 1 then 1.4 elseif sc == 2 then 1.2 else 1)
+    local charAttr = if LocalPlayer.Character then LocalPlayer.Character:GetAttribute("skillcheckspeed") or 1 else 1
+    
+    v14 = TweenService:Create(Line, TweenInfo.new(math.max(1.3 * charAttr * speedMulti, 0.4), Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {
+        Rotation = Line.Rotation + 360
+    })
+    
+    v14.Completed:Connect(function(p1)
+        if p1 ~= Enum.PlaybackState.Completed then return end
+        if v9 then
+            KingScourgeHit:FireServer(v13, "fail")
+            endScourgeMode()
+        end
+    end)
+    v14:Play()
+end
+
+-- ==========================================================
+-- EVENT LISTENERS
+-- ==========================================================
+local conn_scourgeStart, conn_scourgeEnd, conn_skillCheck, conn_inputBegan, conn_inputEnded
+
+conn_scourgeStart = KingScourgeStart.OnClientEvent:Connect(function(p1, p2, p3)
+    if not getgenv().InstanSkillCheck_Active then return end
+    if v9 then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    local checkInt = char:FindFirstChild("CheckInterractable")
+    if not (checkInt and checkInt:GetAttribute("isRepairing")) then return end
+    
+    v9 = true
+    v10 = p3 or 1
+    v11 = p3 or 1
+    v12 = p1
+    v13 = p2
+    v5 = p1
+    v6 = p2
+    v3 = true
+    v7 = false
+    v8 = true
+    Check.Visible = true
+    Line.Rotation = 0
+    Goal.Rotation = math.random(0, 200)
+    
+    startHpCheck()
+    startActionTagCheck()
+    startScourgeSpin()
+end)
+
+conn_scourgeEnd = KingScourgeEnd.OnClientEvent:Connect(function(p1)
+    if not getgenv().InstanSkillCheck_Active then return end
+    if v13 ~= p1 then return end
+    endScourgeMode()
+end)
+
+conn_skillCheck = SkillCheckEvent.OnClientEvent:Connect(function(p1, p2)
+    if not getgenv().InstanSkillCheck_Active then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local CheckInterractable = char:FindFirstChild("CheckInterractable")
+    if not CheckInterractable or not CheckInterractable:GetAttribute("isRepairing") then return end
+    
+    v6 = p2
+    v5 = p1
+    v3 = true
+    v7 = false
+    v8 = false
+    Check.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    
+    if not v1 or v15 then
+        startHpCheck()
+        startActionTagCheck()
+        task.delay(0.5, function()
+            if v3 then
+                v8 = true
+                Check.Visible = true
+                Goal.Rotation = math.random(0, 200)
+                Line.Rotation = Goal.Rotation + 85
+                tweenLineRotation()
+            end
+        end)
+        return
+    end
+    
+    startMovementCheck()
+    startHpCheck()
+    startActionTagCheck()
+    task.delay(0.5, function()
+        if v3 then
+            v8 = true
+            Check.Visible = true
+            Goal.Rotation = math.random(0, 200)
+            Line.Rotation = Goal.Rotation + 85
+            tweenLineRotation()
+        end
+    end)
+end)
+
+conn_inputBegan = UserInputService.InputBegan:Connect(function(p1, p2)
+    if not getgenv().InstanSkillCheck_Active then return end
+    if p2 then return end
+    if p1.KeyCode ~= Enum.KeyCode.Space then return end
+    if not v3 then return end
+    
+    if not v9 then
+        handleSkillCheck("success")
+        return
+    end
+    
+    KingScourgeHit:FireServer(v13, "success")
+    
+    v10 = v10 - 1
+    if v10 <= 0 then
+        endScourgeMode()
+    else
+        Goal.Rotation = Line.Rotation + math.random(135, 225) - 130.5
+        if v14 then v14:Cancel(); v14 = nil end
+        startScourgeSpin()
+    end
+end)
+
+conn_inputEnded = UserInputService.InputEnded:Connect(function(p1, p2)
+    if not getgenv().InstanSkillCheck_Active then return end
+    if p2 then return end
+    if p1.UserInputType ~= Enum.UserInputType.MouseButton1 or (not v3 or v1) then return end
+    
+    if v8 then
+        if not v3 or v7 then return end
+        v7 = true
+        if v4 then v4:Cancel(); v4 = nil end
+        task.delay(0.1, function()
+            v3 = false
+            Check.Visible = false
+            Line.Rotation = 0
+            Goal.Rotation = 0
+        end)
+        Frame.Visible = false
+        SkillCheckResultEvent:FireServer("fail", -10, v5, v6)
+        
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("CheckInterractable") then
+            char.CheckInterractable:SetAttribute("isRepairing", false)
+        end
+        cleanupSkillCheck()
+    else
+        if not v3 or v7 then return end
+        v7 = true
+        if v4 then v4:Cancel(); v4 = nil end
+        v3 = false
+        Check.Visible = false
+        Line.Rotation = 0
+        Goal.Rotation = 0
+        SkillCheckResultEvent:FireServer("neutral", 0, v5, v6)
+        cleanupSkillCheck()
+    end
+end)
+
+-- ==========================================================
+-- FUNGSI CLEANUP
+-- ==========================================================
+getgenv().RemoveInstanSkillCheckPC = function()
+    if conn_scourgeStart then conn_scourgeStart:Disconnect() end
+    if conn_scourgeEnd then conn_scourgeEnd:Disconnect() end
+    if conn_skillCheck then conn_skillCheck:Disconnect() end
+    if conn_inputBegan then conn_inputBegan:Disconnect() end
+    if conn_inputEnded then conn_inputEnded:Disconnect() end
+    
+    cleanupSkillCheck()
+    
+    if v4 then v4:Cancel(); v4 = nil end
+    if v14 then v14:Cancel(); v14 = nil end
+    
+    v3 = false
+    Check.Visible = false
+    Line.Rotation = 0
+    Goal.Rotation = 0
+    
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("CheckInterractable") then
+        char.CheckInterractable:SetAttribute("isRepairing", false)
+    end
+end
