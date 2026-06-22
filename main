@@ -4,7 +4,7 @@ local map = {
     [125224440903394] = "desrt",
 }
 
-local base = "https://raw.githubusercontent.com/Tiooxy/rosblox/refs/heads/main/"
+local base = "https://raw.githubusercontent.com/xoxox-tio/rblx/refs/heads/main/"
 
 local scriptName = map[game.PlaceId] or "all_map"
 
